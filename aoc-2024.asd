@@ -13,6 +13,7 @@ Author: Janne Pakarinen <gingeralesy@gmail.com>
   :description "Advent of Code 2024 - https://adventofcode.com/2024"
   :serial T
   :components ((:file "package")
+               (:file "util")
                (:file "day1"))
   :depends-on (:asdf
                :alexandria
