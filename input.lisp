@@ -7,7 +7,7 @@
   '(or (and keyword (eql :eof)) (simple-array character (*))))
 
 (defparameter *clean-re*
-  (cl-ppcre:create-scanner "^(.*\\S?)\\s*$")
+  (cl-ppcre:create-scanner "^(.*\\S)?\\s*$")
   "Regular expression to clear trailing whitespace.")
 
 (defun local-file (filename &key error)
