@@ -7,14 +7,14 @@
   (declare (optimize (speed 3)))
   (let ((parser (cl-ppcre:create-scanner "\\d+"))
         (left ())
-        (right (if counts-p (make-hash-table :test #'= :hash-function #'identity) ())))
+        (right (if counts-p
+                   (make-array #x20000 :element-type '(unsigned-byte 32) :initial-element 0)
+                   ())))
     (do-file (line "day1.txt" (values left right))
       (let ((nums (cl-ppcre:all-matches-as-strings parser line)))
         (push (parse-integer (car nums)) left)
         (if counts-p
-            (let ((num (parse-integer (cadr nums))))
-              (setf (gethash num right)
-                    (1+ (the (unsigned-byte 32) (gethash num right 0)))))
+            (incf (aref right (parse-integer (cadr nums))))
             (push (parse-integer (cadr nums)) right))))))
 
 (defun d1p1 ()
@@ -32,10 +32,10 @@
   (declare (optimize (speed 3)))
   (multiple-value-bind (left right) (day1-values T)
     (declare (type list left))
-    (declare (type hash-table right))
+    (declare (type (simple-array (unsigned-byte 32) (#x20000)) right))
     (loop with sum of-type (unsigned-byte 32) = 0
           for num of-type (unsigned-byte 32) in (sort left #'<)
-          for count of-type (unsigned-byte 32) = (gethash num right 0)
+          for count of-type (unsigned-byte 32) = (aref right num)
           do (incf sum (* num count))
           finally (return sum))))
 
