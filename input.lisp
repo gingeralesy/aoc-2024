@@ -32,13 +32,12 @@
 
 (defun clean-line (line)
   "Cleans the string from trailing whitespace."
+  (declare (type string line))
   (declare (optimize (speed 3)))
-  (if (stringp line)
-      (multiple-value-bind (match groups)
-          (cl-ppcre:scan-to-strings *clean-re* line)
-        (declare (type (or null (simple-array T (*))) groups))
-        (or (and match groups (aref groups 0)) ""))
-      line))
+  (multiple-value-bind (match groups)
+      (cl-ppcre:scan-to-strings *clean-re* line)
+    (declare (type (or null (simple-array string (1))) groups))
+    (or (and match groups (aref groups 0)) "")))
 
 (declaim (inline read-clean-line))
 (defun read-clean-line (stream)
