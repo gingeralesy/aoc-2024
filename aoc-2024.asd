@@ -17,7 +17,8 @@ Author: Janne Pakarinen <gingeralesy@gmail.com>
                (:file "util")
                (:file "queue")
                (:file "day1")
-               (:file "day2"))
+               (:file "day2")
+               (:file "day3"))
   :depends-on (:asdf
                :alexandria
                :cl-ppcre
