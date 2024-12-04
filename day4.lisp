@@ -1,0 +1,97 @@
+(in-package #:aoc-2024)
+
+;; https://adventofcode.com/2024/day/4
+
+(defun d4-data ()
+  (declare (optimize (speed 3)))
+  (let ((map (make-queue))
+        (width 0)
+        (height 0))
+    (declare (type (unsigned-byte 32) width height))
+    (do-file (line "day4.txt" (values
+                               (make-array `(,height ,width)
+                                           :element-type '(integer 0 3)
+                                           :initial-contents (queue-as-list map))
+                               width height))
+      (incf height)
+      (unless (< 0 width) (setf width (length line)))
+      (loop for i from 0 below width
+            collect (ecase (char line i)
+                      (#\X 0)
+                      (#\M 1)
+                      (#\A 2)
+                      (#\S 3))
+            into row
+            finally (queue-push row map)))))
+
+(defun day4-check-dir (map x y width height direction)
+  (declare (type (simple-array (integer 0 3) (* *)) map))
+  (declare (type (unsigned-byte 32) x y width height))
+  (declare (optimize (speed 3)))
+  (let ((dx 0)
+        (dy 0))
+    (declare (type (integer -1 1) dx dy))
+    (ecase direction
+      ((:nw :n :ne)
+       (when (< y 3) (return-from day4-check-dir NIL))
+       (setf dy -1))
+      ((:sw :s :se)
+       (when (< (- height 4) y) (return-from day4-check-dir NIL))
+       (setf dy 1))
+      ((:w :e)))
+    (ecase direction
+      ((:nw :w :sw)
+       (when (< x 3) (return-from day4-check-dir NIL))
+       (setf dx -1))
+      ((:ne :e :se)
+       (when (< (- width 4) x) (return-from day4-check-dir NIL))
+       (setf dx 1))
+      ((:n :s)))
+    (dotimes (i 4 T)
+      (unless (= i (aref map (+ y (* i dy)) (+ x (* i dx))))
+        (return NIL)))))
+
+(defun d4p1 ()
+  (declare (optimize (speed 3)))
+  (multiple-value-bind (map width height) (d4-data)
+    (declare (type (simple-array (integer 0 3) (* *)) map))
+    (declare (type (unsigned-byte 32) width height))
+    (let ((count 0))
+      (declare (type (unsigned-byte 32) count))
+      (dotimes (y height count)
+        (dotimes (x width)
+          (when (= 0 (aref map y x))
+            (dolist (dir '(:nw :n :ne :w :e :sw :s :se))
+              (when (day4-check-dir map x y width height dir)
+                (incf count)))))))))
+
+;; 2557
+
+(defun day4-check-x (map x y width height)
+  (declare (type (simple-array (integer 0 3) (* *)) map))
+  (declare (type (unsigned-byte 32) x y))
+  (declare (type (and (unsigned-byte 32) (integer 3 *)) width height))
+  (declare (optimize (speed 3)))
+  (when (and (< 0 x) (< x (1- width)) (< 0 y) (< y (1- height)) (= 2 (aref map y x)))
+    (let ((nw (aref map (1- y) (1- x)))
+          (ne (aref map (1- y) (1+ x)))
+          (sw (aref map (1+ y) (1- x)))
+          (se (aref map (1+ y) (1+ x))))
+      (and (or (and (= nw 1) (= se 3)) ;; \ -diagonal
+               (and (= nw 3) (= se 1)))
+           (or (and (= sw 1) (= ne 3)) ;; / -diagonal
+               (and (= sw 3) (= ne 1)))))))
+
+(defun d4p2 ()
+  (declare (optimize (speed 3)))
+  (multiple-value-bind (map width height) (d4-data)
+    (declare (type (simple-array (integer 0 3) (* *)) map))
+    (declare (type (unsigned-byte 32) width height))
+    (let ((count 0))
+      (declare (type (unsigned-byte 32) count))
+      (dotimes (y height count)
+        (dotimes (x width)
+          (when (day4-check-x map x y width height)
+            (incf count)))))))
+
+;; 1854
