@@ -36,8 +36,9 @@
   (declare (optimize (speed 3)))
   (multiple-value-bind (match groups)
       (cl-ppcre:scan-to-strings *clean-re* line)
+    (declare (type (simple-array character (*)) match))
     (declare (type (or null (simple-array string (1))) groups))
-    (or (and match groups (aref groups 0)) "")))
+    (or (and match (< 0 (length match)) groups (aref groups 0)) "")))
 
 (declaim (inline read-clean-line))
 (defun read-clean-line (stream)
