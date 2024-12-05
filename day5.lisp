@@ -45,11 +45,11 @@
         while valid-p
         for index-a of-type (unsigned-byte 32) from 1 below (length update)
         for page-a of-type d5-page = (aref update index-a)
-        for before-a of-type list = (aref orders page-a)
+        for after-a of-type list = (aref orders page-a)
         do (loop while valid-p
                  for index-b of-type (unsigned-byte 32) from 0 below index-a
                  for page-b of-type d5-page = (aref update index-b)
-                 when (find page-b before-a :test #'(lambda (a b)
+                 when (find page-b after-a :test #'(lambda (a b)
                                                       (declare (type d5-page a b))
                                                       (= a b)))
                  do (setf valid-p NIL))
@@ -78,12 +78,12 @@
          until swap-p
          for index-a of-type (unsigned-byte 32) from (1+ done-to) below (length update)
          for page-a of-type d5-page = (aref update index-a)
-         for before-a of-type list = (aref orders page-a)
+         for after-a of-type list = (aref orders page-a)
          do (loop
               until swap-p
               for index-b of-type (unsigned-byte 32) from 0 below index-a
               for page-b of-type d5-page = (aref update index-b)
-              do (when (find page-b before-a :test #'(lambda (a b)
+              do (when (find page-b after-a :test #'(lambda (a b)
                                                        (declare (type d5-page a b))
                                                        (= a b)))
                    (setf (aref update index-a) page-b)
