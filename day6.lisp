@@ -110,9 +110,9 @@
             do (unless (aref checked next-y next-x)
                  (setf (aref map next-y next-x) T) ;; Add the wall.
                  (when (day6-loop-p dir-x dir-y x y visits map width height)
-                   (incf loop-count)))
-            do (setf (aref checked next-y next-x) T) ;; Prevent checking again on a return.
-            do (setf (aref map next-y next-x) NIL) ;; Remove the wall.
+                   (incf loop-count))
+                 (setf (aref checked next-y next-x) T) ;; Prevent checking again on a return.
+                 (setf (aref map next-y next-x) NIL)) ;; Remove the wall.
             do (push (cons dir-x dir-y) (aref visits y x))
             finally (return loop-count)))))
 
