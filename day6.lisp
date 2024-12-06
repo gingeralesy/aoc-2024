@@ -79,12 +79,18 @@
 ;; 5242
 
 (defun day6-loop-p (dir-x dir-y start-x start-y visited map width height)
-  (flet ((test-dir (a b) (and (= (car a) (car b)) (= (cdr a) (cdr b)))))
+  (declare (type (simple-array list (* *)) visited))
+  (declare (optimize (speed 3)))
+  (flet ((test-dir (a b)
+           (declare (type cons a b))
+           (let ((ax (car a)) (ay (cdr a)) (bx (car b)) (by (cdr b)))
+             (declare (type (integer -1 1) ax ay bx by))
+             (and (= ax bx) (= ay by)))))
     (loop with visits = (make-array `(,height ,width) :element-type 'list :initial-element NIL)
-          with dir-x = dir-x
-          with dir-y = dir-y
-          for x = start-x then (+ x dir-x)
-          for y = start-y then (+ y dir-y)
+          with dir-x of-type (integer -1 1) = dir-x
+          with dir-y of-type (integer -1 1) = dir-y
+          for x of-type (signed-byte 32) = start-x then (+ x dir-x)
+          for y of-type (signed-byte 32) = start-y then (+ y dir-y)
           while (and (<= 0 x) (<= 0 y) (< x width) (< y height))
           for dir = (cons dir-x dir-y)
           when (or (find dir (aref visited y x) :test #'test-dir)
@@ -96,16 +102,19 @@
                (setf dir-y dy)))))
 
 (defun d6p2 ()
+  (declare (optimize (speed 3)))
   (multiple-value-bind (steps positions map width height) (day6-path)
     (declare (ignore steps))
+    (declare (type (simple-array boolean (* *)) map))
     (let ((checked (make-array `(,height ,width) :element-type 'boolean :initial-element NIL))
           (visits (make-array `(,height ,width) :element-type 'list :initial-element NIL))
           (loop-count 0))
+      (declare (type (unsigned-byte 32) loop-count))
       (setf (aref checked (cdar positions) (caar positions)) T) ;; Guard start position.
       (loop for (x . y) in positions
             for (next-x . next-y) in (rest positions)
-            for dir-x = (- next-x x)
-            for dir-y = (- next-y y)
+            for dir-x of-type (integer -1 1) = (- (the (unsigned-byte 32) next-x) x)
+            for dir-y of-type (integer -1 1) = (- (the (unsigned-byte 32) next-y) y)
             when (aref map next-y next-x) do (error "A wall is already at (~a, ~a)" next-x next-y)
             do (unless (aref checked next-y next-x)
                  (setf (aref map next-y next-x) T) ;; Add the wall.
