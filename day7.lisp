@@ -45,6 +45,8 @@
 
 (defun day7-concat (a b)
   (declare (type (unsigned-byte 62) a b))
+  (declare (optimize (speed 3)))
+  ;; Interestingly this is faster than calculating (+ b (* a (expt 10 (ceiling (log b 10)))))
   (loop for mul of-type (unsigned-byte 62) = 10 then (* 10 mul)
         until (< b mul)
         finally (return (u62 (+ (u62 (* mul a)) b)))))
