@@ -2,13 +2,16 @@
 
 ;; Copied mostly from aoc-2023 util.lisp
 
-(declaim (inline u32 u64))
+(declaim (inline u32 u64 u62))
 (defun u32 (value)
   "Ensures that the integer value is a short unsigned integer."
   (logand #xffffffff value))
 (defun u64 (value)
   "Ensures that the integer value is an unsigned integer."
   (logand #xffffffffffffffff value))
+(defun u62 (value)
+  "Ensures that the integer value is an unsigned 62-bit integer."
+  (logand #x3fffffffffffffff value))
 
 (defmacro profile-run (&body body)
   "Runs a profiler for the action to see how long it takes to execute."
