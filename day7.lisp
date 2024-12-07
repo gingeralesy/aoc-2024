@@ -36,24 +36,25 @@
 (defun d7p1 ()
   (declare (optimize (speed 3)))
   (loop with total of-type (unsigned-byte 62) = 0
-        for (result . values) in (the list (day7-data))
+        for (result . values) in (day7-data)
         when (day7-solve result (car values) (rest values) (list #'* #'+))
         do (incf total (the (unsigned-byte 62) result))
         finally (return total)))
 
 ;; 1289579105366
 
+(defun day7-concat (a b)
+  (declare (type (unsigned-byte 62) a b))
+  (loop for mul of-type (unsigned-byte 62) = 10 then (* 10 mul)
+        until (< b mul)
+        finally (return (u62 (+ (u62 (* mul a)) b)))))
+
 (defun d7p2 ()
   (declare (optimize (speed 3)))
-  (flet ((concat-values (a b)
-           (declare (type (unsigned-byte 62) a b))
-           (loop for mul of-type (unsigned-byte 62) = 10 then (* 10 mul)
-                 until (< b mul)
-                 finally (return (u62 (+ (u62 (* mul a)) b))))))
-    (loop with total of-type (unsigned-byte 62) = 0
-          for (result . values) in (the list (day7-data))
-          when (day7-solve result (car values) (rest values) (list #'* #'+ #'concat-values))
-          do (incf total (the (unsigned-byte 62) result))
-          finally (return total))))
+  (loop with total of-type (unsigned-byte 62) = 0
+        for (result . values) in (day7-data)
+        when (day7-solve result (car values) (rest values) (list #'* #'+ #'day7-concat))
+        do (incf total (the (unsigned-byte 62) result))
+        finally (return total)))
 
 ;; 92148721834692
