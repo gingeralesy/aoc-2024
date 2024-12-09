@@ -13,6 +13,12 @@
   "Ensures that the integer value is an unsigned 62-bit integer."
   (logand #x3fffffffffffffff value))
 
+(declaim (inline char->digit))
+(defun char->digit (ch)
+  (declare (type (and character) ch))
+  (declare (optimize (speed 3)))
+  (ecase ch (#\0 0) (#\1 1) (#\2 2) (#\3 3) (#\4 4) (#\5 5) (#\6 6) (#\7 7) (#\8 8) (#\9 9)))
+
 (defmacro profile-run (&body body)
   "Runs a profiler for the action to see how long it takes to execute."
   (let ((start-var (gensym "START")))
