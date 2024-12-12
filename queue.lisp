@@ -3,9 +3,11 @@
 ;; Copied from aoc-2023
 
 (declaim (inline make-queue))
-(defun make-queue ()
+(defun make-queue (&rest values)
   "Creates a linked list based queue."
-  (cons NIL NIL)) ;; (HEAD . TAIL)
+  (let ((queue (cons NIL NIL))) ;; (HEAD . TAIL)
+    (dolist (value values queue)
+      (queue-push value queue))))
 
 (declaim (inline queue-length))
 (defun queue-length (queue)
