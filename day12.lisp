@@ -62,48 +62,40 @@
 ;; 1371306
 
 (defun day12-count-region-sides (from-x from-y map width height visited)
-  (flet ((match-plot (x y plant)
+  (declare (type (unsigned-byte 32) from-x from-y width height))
+  (declare (type (simple-array (unsigned-byte 8) (* *)) map))
+  (declare (type (simple-array boolean (* *)) visited))
+  ;; (declare (optimize (speed 3)))
+  (flet ((plot-matches-p (x y)
            (and (<= 0 x) (< x width)
                 (<= 0 y) (< y height)
-                (= plant (aref map y x)))))
-    (loop
-      ;; Go through the region matching this plot and mark them as visited.
-      with plant = (aref map from-y from-x)
-      and queued = (make-array `(,height ,width) :element-type 'boolean
-                                                 :initial-element NIL)
-      and region = 0
-      and sides = 0
-      and next = (make-queue (cons from-x from-y))
-      until (queue-empty-p next)
-      for (x . y) = (queue-pop next)
-      do (setf (aref visited y x) T)
-      do (incf region)
-      do (loop
-           ;; Queue any neighbouring plots that match the region.
-           for (dx . dy) in '((-1 . 0) (1 . 0) (0 . -1) (0 . 1))
-           for next-x = (+ x dx)
-           for next-y = (+ y dy)
-           for in-region-p = (match-plot next-x next-y plant)
-           do (when (and in-region-p
-                         (not (aref visited next-y next-x))
-                         (not (aref queued next-y next-x)))
-                (setf (aref queued next-y next-x) T)
-                (queue-push (cons next-x next-y) next))
-           unless in-region-p ;; Edge found.
-           do (loop
-                ;; There's got to be a better way to count the edges..
-                ;; TODO: Maybe count corners instead?
-                with checked-p = NIL
-                for dir-x in (if (zerop dx) '(-1 1) '(0 0))
-                for dir-y in (if (zerop dy) '(-1 1) '(0 0))
-                do (loop for x1 = (+ x dir-x) then (+ x1 dir-x)
-                         for y1 = (+ y dir-y) then (+ y1 dir-y)
-                         while (and (not checked-p) ;; Part of the edge?
-                                    (match-plot x1 y1 plant)
-                                    (not (match-plot (+ x1 dx) (+ y1 dy) plant)))
-                         when (aref visited y1 x1) do (setf checked-p T)) ;; Already tested?
-                finally (unless checked-p(incf sides))))
-      finally (return (values region sides)))))
+                (= (aref map y x) (aref map from-y from-x))))
+         (queue-plot (x y &optional queue)
+           (let ((queue (or queue (make-queue))))
+             (unless (aref visited y x)
+               (setf (aref visited y x) T)
+               (queue-push (cons x y) queue))
+             queue)))
+    ;; Go through the region matching this plot and mark them as visited.
+    (loop with queue = (queue-plot from-x from-y)
+          until (queue-empty-p queue)
+          for (x . y) of-type ((unsigned-byte 32) . (unsigned-byte 32)) = (queue-pop queue)
+          count x into region-size of-type (unsigned-byte 32)
+          ;; Queue any neighbouring plots that match the region.
+          sum (loop for (dx . dy) of-type ((integer -1 1) . (integer -1 1))
+                    in '((-1 . 0) (1 . 0) (0 . -1) (0 . 1))
+                    for next-x of-type (signed-byte 32) = (+ x dx)
+                    and next-y of-type (signed-byte 32) = (+ y dy)
+                    if (plot-matches-p next-x next-y)
+                    do (queue-plot next-x next-y queue)
+                    else ;; Else there's an edge so check for corners counter-clockwise.
+                    when (or (not (plot-matches-p (if (zerop dx) (+ x dy) x) ;; Side
+                                                  (if (zerop dy) (- y dx) y)))
+                             (plot-matches-p (if (zerop dx) (+ x dy) next-x) ;; Diagonal
+                                             (if (zerop dy) (- y dx) next-y)))
+                    count dx)
+          into side-count of-type (unsigned-byte 32)
+          finally (return (values region-size side-count)))))
 
 (defun d12p2 ()
   (multiple-value-bind (map width height) (day12-data)
