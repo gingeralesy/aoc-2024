@@ -72,7 +72,7 @@
         (setf (cdr queue) NIL))
       obj)))
 
-(defun pqueue-pop (queue &optional (key #'identity) (test #'<))
+(defun pqueue-pop (queue &key (key #'identity) (test #'<))
   "Use this if you need ordering but can't trust the queue to be ordered."
   (when (car queue)
     (loop with min-prev = NIL

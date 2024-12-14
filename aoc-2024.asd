@@ -27,7 +27,8 @@ Author: Janne Pakarinen <gingeralesy@gmail.com>
                (:file "day9")
                (:file "day10")
                (:file "day11")
-               (:file "day12"))
+               (:file "day12")
+               (:file "day13"))
   :depends-on (:asdf
                :alexandria
                :cl-ppcre
