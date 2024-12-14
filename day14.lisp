@@ -56,15 +56,13 @@
               (setf in-a-row 0))
           (when (and (not found-p) (< 10 in-a-row))
             (setf found-p T)
-            (break))
+            (break)) ;; So that I can actually find the darn thing.
           (format stream "~c " (if (gethash (cons x y) map) #\# #\.))))
       (format stream "~%"))))
 
 (defun d14p2 (stream time &optional (width 101) (height 103))
   (multiple-value-bind (robots count) (day14-data)
     (loop with map = (make-hash-table :test 'equal)
-          and mid-x = (floor width 2)
-          and mid-y = (floor height 2)
           for i from 0 below count
           for robot = (aref robots i)
           for x = (mod (+ (day14-robot-px robot) (* (day14-robot-vx robot) time)) width)
@@ -75,3 +73,35 @@
                     (day14-print-map stream map width height)))))
 
 ;; 6577
+
+(defun d14p2-skippy (total-time &key (start 0) (width 101) (height 103) (filename "day14.gif"))
+  ;; Bonus visualisation.
+  (multiple-value-bind (robots count) (day14-data)
+    (let* ((color-table (skippy:make-color-table))
+           (stream (skippy:make-data-stream :height (* 2 height) :width (* 2 width)
+                                            :color-table color-table
+                                            :loopingp T))
+           (black (skippy:ensure-color (skippy:rgb-color #x00 #x00 #x00) color-table))
+           (white (skippy:ensure-color (skippy:rgb-color #xff #xff #xff) color-table)))
+      (loop for time from 0 below total-time
+            and image-data = (skippy:make-image-data (* 2 width) (* 2 height)
+                                                     :initial-element white)
+            do (loop for i from 0 below count
+                     for robot = (aref robots i)
+                     for x = (mod (+ (day14-robot-px robot)
+                                     (* (day14-robot-vx robot) (+ start time)))
+                                  width)
+                     and y = (mod (+ (day14-robot-py robot)
+                                     (* (day14-robot-vy robot) (+ start time)))
+                                  height)
+                     for pos = (+ (* 2 x) (* (* 2 y) (* 2 width)))
+                     do (fill image-data black :start pos :end (+ pos 2))
+                     do (fill image-data black :start (+ pos (* width 2))
+                                               :end (+ pos (* width 2) 2)))
+            do (skippy:add-image
+                (skippy:make-image :width (* 2 width) :height (* 2 height)
+                                   :image-data image-data
+                                   :disposal-method :none
+                                   :delay-time 2)
+                stream))
+      (skippy:output-data-stream stream (local-file filename)))))

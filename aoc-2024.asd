@@ -34,4 +34,5 @@ Author: Janne Pakarinen <gingeralesy@gmail.com>
                :alexandria
                :cl-ppcre
                :local-time
-               :bordeaux-threads))
+               :bordeaux-threads
+               :skippy))
