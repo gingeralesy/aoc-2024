@@ -69,20 +69,22 @@
                do (queue-push (day15-char->direction character) directions)
                do (incf dir-count)))))))
 
-(defun day15-move-test (map from-x from-y dx dy width height tested)
+(defun day15-move-test (map from-x from-y dx dy width height &optional tested)
   (declare (type (simple-array keyword (* *)) map))
   (declare (type (unsigned-byte 32) from-x from-y width height))
   (declare (type (integer -1 1) dx dy))
-  (declare (type (simple-array boolean (* *)) tested))
+  (declare (type (or null (simple-array boolean (* *))) tested))
   (unless (or (zerop dx) (zerop dy)) (error "Diagonal movement."))
   (when (and (zerop dx) (zerop dy)) (error "No movement."))
   (when (or (eql :floor (aref map from-y from-x))
             (eql :wall (aref map from-y from-x)))
     (error "Moving a ~(~a~) from ~a,~a" (aref map from-y from-x) from-x from-y))
-  (when (aref tested from-y from-x) (return-from day15-move-test T))
-  (setf (aref tested from-y from-x) T)
   (let ((to-x (+ from-x dx))
-        (to-y (+ from-y dy)))
+        (to-y (+ from-y dy))
+        (tested (or tested (make-array `(,height ,width) :element-type 'boolean
+                                                         :initial-element NIL))))
+    (when (aref tested from-y from-x) (return-from day15-move-test T))
+    (setf (aref tested from-y from-x) T)
     (when (and (<= 0 to-x) (<= 0 to-y) (< to-x width) (< to-y height))
       (ecase (aref map to-y to-x)
         (:box
@@ -101,15 +103,17 @@
         (:floor T)
         (:robot (error "Pushing into the robot at ~a,~a???" to-x to-y))))))
 
-(defun day15-move (map from-x from-y dx dy width height moved)
+(defun day15-move (map from-x from-y dx dy width height &optional moved)
   (declare (type (simple-array keyword (* *)) map))
   (declare (type (unsigned-byte 32) from-x from-y width height))
   (declare (type (integer -1 1) dx dy))
-  (declare (type (simple-array boolean (* *)) moved))
-  (when (aref moved from-y from-x) (return-from day15-move T))
-  (setf (aref moved from-y from-x) T)
+  (declare (type ((or null simple-array) boolean (* *)) moved))
   (let ((to-x (+ from-x dx))
-        (to-y (+ from-y dy)))
+        (to-y (+ from-y dy))
+        (moved (or moved (make-array `(,height ,width) :element-type 'boolean
+                                                       :initial-element NIL))))
+    (when (aref moved from-y from-x) (return-from day15-move T))
+    (setf (aref moved from-y from-x) T)
     (ecase (aref map to-y to-x)
       (:box (day15-move map to-x to-y dx dy width height moved))
       (:box-left
@@ -140,20 +144,13 @@
       (format T "~c" (day15-tile->char (aref map y x))))
     (format T "~%")))
 
-(defun day15-fill-array (array value width height)
-  (dotimes (y height array)
-    (dotimes (x width)
-      (setf (aref array y x) value))))
-
 (defun day15-simulate (start-x start-y map directions width height dir-count
                        &key (steps 0) print-dirs-p)
   (declare (type (unsigned-byte 32) start-x start-y width height dir-count steps))
   (declare (type boolean print-dirs-p))
   (declare (type (simple-array keyword (* *)) map))
   (declare (type (simple-array keyword (*)) directions))
-  (loop with handled = (make-array `(,height ,width) :element-type 'boolean
-                                                     :initial-element NIL)
-        and x = start-x
+  (loop with x = start-x
         and y = start-y
         for i from 0 below dir-count
         for dir = (aref directions i)
@@ -172,10 +169,8 @@
                                        (:north "North")
                                        (:south "South"))
                                      x y (+ x dx) (+ y dy))
-        do (when (day15-move-test map x y dx dy width height
-                                  (day15-fill-array handled NIL width height))
-             (day15-move map x y dx dy width height
-                         (day15-fill-array handled NIL width height))
+        do (when (day15-move-test map x y dx dy width height)
+             (day15-move map x y dx dy width height)
              (incf x dx)
              (incf y dy))))
 
