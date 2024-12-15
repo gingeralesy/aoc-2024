@@ -74,6 +74,7 @@
   (declare (type (unsigned-byte 32) from-x from-y width height))
   (declare (type (integer -1 1) dx dy))
   (declare (type (or null (simple-array boolean (* *))) tested))
+  (declare (optimize (speed 3)))
   (unless (or (zerop dx) (zerop dy)) (error "Diagonal movement."))
   (when (and (zerop dx) (zerop dy)) (error "No movement."))
   (when (or (eql :floor (aref map from-y from-x))
@@ -100,19 +101,19 @@
              (and (day15-move-test map (1- to-x) to-y dx dy width height tested)
                   (day15-move-test map to-x to-y dx dy width height tested))))
         (:wall NIL)
-        (:floor T)
-        (:robot (error "Pushing into the robot at ~a,~a???" to-x to-y))))))
+        (:floor T)))))
 
 (defun day15-move (map from-x from-y dx dy width height &optional moved)
   (declare (type (simple-array keyword (* *)) map))
   (declare (type (unsigned-byte 32) from-x from-y width height))
   (declare (type (integer -1 1) dx dy))
-  (declare (type ((or null simple-array) boolean (* *)) moved))
+  (declare (type (or null  (simple-array boolean (* *))) moved))
+  (declare (optimize (speed 3)))
   (let ((to-x (+ from-x dx))
         (to-y (+ from-y dy))
         (moved (or moved (make-array `(,height ,width) :element-type 'boolean
                                                        :initial-element NIL))))
-    (when (aref moved from-y from-x) (return-from day15-move T))
+    (when (aref moved from-y from-x) (return-from day15-move))
     (setf (aref moved from-y from-x) T)
     (ecase (aref map to-y to-x)
       (:box (day15-move map to-x to-y dx dy width height moved))
@@ -124,18 +125,16 @@
        (when (zerop dx)
          (day15-move map (1- to-x) to-y dx dy width height moved))
        (day15-move map to-x to-y dx dy width height moved))
-      (:floor)
-      (:wall (error "Pushing into a wall at ~a,~a" to-x to-y))
-      (:robot (error "Pushing into the robot at ~a,~a???" to-x to-y)))
+      (:floor))
     (setf (aref map to-y to-x) (aref map from-y from-x))
     (setf (aref map from-y from-x) :floor)))
 
 (defun day15-sum-boxes (map width height)
-  (let ((sum 0))
-    (dotimes (y height sum)
-      (dotimes (x width)
-        (when (or (eql :box (aref map y x)) (eql :box-left (aref map y x)))
-          (incf sum (+ x (* y 100))))))))
+  (loop for y from 0 below height
+        sum (loop for x from 0 below width
+                  for tile = (aref map y x)
+                  when (or (eql :box tile) (eql :box-left tile))
+                  sum (+ x (* y 100)))))
 
 (defun day15-print-map (map width height)
   (dotimes (y height)
@@ -150,8 +149,9 @@
   (declare (type boolean print-dirs-p))
   (declare (type (simple-array keyword (* *)) map))
   (declare (type (simple-array keyword (*)) directions))
-  (loop with x = start-x
-        and y = start-y
+  (declare (optimize (speed 3)))
+  (loop with x of-type (unsigned-byte 32) = start-x
+        and y of-type (unsigned-byte 32) = start-y
         for i from 0 below dir-count
         for dir = (aref directions i)
         for (dx . dy) = (ecase dir
@@ -168,7 +168,9 @@
                                        (:east  "East ")
                                        (:north "North")
                                        (:south "South"))
-                                     x y (+ x dx) (+ y dy))
+                                     x y
+                                     (the (unsigned-byte 32) (+ x dx))
+                                     (the (unsigned-byte 32) (+ y dy)))
         do (when (day15-move-test map x y dx dy width height)
              (day15-move map x y dx dy width height)
              (incf x dx)
