@@ -16,6 +16,7 @@ Author: Janne Pakarinen <gingeralesy@gmail.com>
                (:file "input")
                (:file "util")
                (:file "queue")
+               (:file "heap")
                (:file "day1")
                (:file "day2")
                (:file "day3")
