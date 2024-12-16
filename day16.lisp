@@ -5,7 +5,9 @@
 (defstruct (day16-node (:constructor day16-node (facing x y)))
   (x 0 :type (unsigned-byte 32))
   (y 0 :type (unsigned-byte 32))
-  (facing :east :type keyword))
+  (facing :east :type keyword)
+  (g-score #xffffffff :type (unsigned-byte 32))
+  (f-score #xffffffff :type (unsigned-byte 32)))
 
 (defun day16-data ()
   (declare (optimize (speed 3)))
@@ -39,13 +41,14 @@
             finally (queue-push row map))
       (incf height))))
 
-(defun day16-solve () ;; A proper use of A* finally!
+(defun day16-solve (&optional all-paths-p) ;; A proper use of A* finally!
+  ;; Note: Because of part 2 I started trying out different nonsense. This became rather terrible.
+  ;;       Please ignore.
   (multiple-value-bind (start-x start-y end-x end-y map) (day16-data)
     (let ((nodes (make-hash-table :test 'equal))
-          (path (make-hash-table :test 'equalp))
-          (queued (make-hash-table :test 'equalp))
-          (g-score (make-hash-table :test 'equalp))
-          (f-score (make-hash-table :test 'equalp)))
+          (path (make-hash-table :test 'equal))
+          (final-path (when all-paths-p (make-hash-table :test 'equal)))
+          (queued (make-hash-table :test 'equal)))
       (labels ((heuristic (from to)
                  (let ((from-x (day16-node-x from))
                        (from-y (day16-node-y from))
@@ -60,6 +63,8 @@
                             (:south (if (< to-y from-y) 2000 (if (= from-x to-x) 1000 0)))
                             (:west  (if (< from-x to-x) 2000 (if (= from-y to-y) 1000 0)))
                             (:east  (if (< to-x from-x) 2000 (if (= from-y to-y) 1000 0))))))))
+               (node-key (node)
+                 (list (day16-node-facing node) (day16-node-x node) (day16-node-y node)))
                (node (facing x y)
                  (let* ((key (list facing x y))
                         (node (gethash key nodes)))
@@ -98,48 +103,106 @@
                                    (:right right)
                                    (:next (node facing next-x next-y))))))
                (push-node (node queue)
-                 (unless (gethash node queued)
-                   (heap-push queue node)
-                   (setf (gethash node queued) T)))
+                 (let ((key (node-key node)))
+                   (cond
+                     ((gethash key queued)
+                      (unless (heap-update queue node)
+                        (error "Failed to update node in heap: ~a" node)))
+                     (T
+                      (heap-push queue node)
+                      (setf (gethash key queued) T)))))
                (pop-node (queue)
                  (let ((node (heap-pop queue)))
-                   (setf (gethash node queued) NIL)
+                   (setf (gethash (node-key node) queued) NIL)
                    node))
-               (f-score (node) (gethash node f-score #xffffffff))
-               (g-score (node) (gethash node g-score #xffffffff))
                (path-cost (node)
                  (loop with full-path = (list node)
                        for current = node then prev
-                       for prev = (gethash current path)
+                       for prev = (gethash (node-key current) path)
+                       when all-paths-p do (setf (gethash (node-key current) final-path) current)
                        while prev
                        do (push prev full-path)
-                       sum (if (eql (day16-node-facing current)
-                                    (day16-node-facing prev))
-                               1 1000)
+                       sum (if (eql (day16-node-facing current) (day16-node-facing prev)) 1 1000)
                        into total-sum
                        finally (return (values total-sum full-path)))))
-        (let ((queue (make-heap #'< :key #'(lambda (node) (f-score node))
+        (let ((queue (make-heap #'< :key #'day16-node-f-score
                                     :element-type '(or null day16-node)
-                                    :initial-element NIL))
+                                    :initial-element NIL
+                                    :test #'(lambda (a b) (equal (node-key a) (node-key b)))))
               (start (node :east start-x start-y))
               (end (node :east end-x end-y)))
-          (setf (gethash start f-score) 0)
-          (setf (gethash start g-score) (heuristic start end))
+          (setf (day16-node-f-score start) 0)
+          (setf (day16-node-g-score start) (heuristic start end))
           (push-node start queue)
           (loop while (< 0 (heap-size queue))
+                with optional-ends = (make-queue)
                 for current = (pop-node queue)
-                when (and (= end-x (day16-node-x current))
-                          (= end-y (day16-node-y current)))
-                do (return (path-cost current))
+                when (and (= end-x (day16-node-x current)) (= end-y (day16-node-y current)))
+                do (if all-paths-p
+                       (unless (< 0 (hash-table-count final-path))
+                         (path-cost current))
+                       (return (path-cost current)))
                 do (loop for next in (next-nodes current)
-                         for cost = (if (eql (day16-node-facing current) (day16-node-facing next))
+                         for next-key = (node-key next)
+                         and cost = (if (eql (day16-node-facing current) (day16-node-facing next))
                                         1 1000)
-                         for tentative-g = (+ (g-score current) cost)
-                         do (when (< tentative-g (g-score next))
-                              (setf (gethash next path) current)
-                              (setf (gethash next g-score) tentative-g)
-                              (setf (gethash next f-score) (+ tentative-g (heuristic next end)))
-                              (push-node next queue)))))))))
+                         for tentative-g = (+ (day16-node-g-score current) cost)
+                         if (and all-paths-p (gethash next-key final-path))
+                         do (cond
+                              ((< tentative-g (day16-node-g-score next))
+                               (error "Somehow found a shorter path to ~a" next))
+                              ((= tentative-g (day16-node-g-score next))
+                               (loop for prev = current then (gethash (node-key prev) path)
+                                     until (gethash (node-key prev) final-path)
+                                     do (setf (gethash (node-key prev) final-path) prev))))
+                         else
+                         do (cond
+                              ((and (< tentative-g (day16-node-g-score next))
+                                    (or (not all-paths-p) (null (gethash next-key final-path))))
+                               (setf (gethash next-key path) current)
+                               (setf (day16-node-g-score next) tentative-g)
+                               (setf (day16-node-f-score next) (+ tentative-g (heuristic next end)))
+                               (push-node next queue))
+                              ((and (= tentative-g (day16-node-g-score next))
+                                    all-paths-p (null (gethash next-key final-path)))
+                               (queue-push current optional-ends))))
+                finally (when all-paths-p
+                          ;; I should clean this up and put the stuff back into the main loop.
+                          ;; But I won't. I'm tired and just want to move on.
+                          (loop
+                            with pending = (make-queue)
+                            for current = (queue-pop optional-ends)
+                            while current
+                            unless (gethash (node-key current) final-path)
+                            do (loop
+                                 for next in (next-nodes current)
+                                 for next-key = (node-key next)
+                                 and cost = (if (eql (day16-node-facing current)
+                                                     (day16-node-facing next))
+                                                1 1000)
+                                 for tentative-g = (+ (day16-node-g-score current) cost)
+                                 if (gethash next-key final-path)
+                                 do (cond
+                                      ((< tentative-g (day16-node-g-score next))
+                                       (error "Somehow found a shorter path to ~a" next))
+                                      ((= tentative-g (day16-node-g-score next))
+                                       (loop for prev = current then (gethash (node-key prev) path)
+                                             until (gethash (node-key prev) final-path)
+                                             do (setf (gethash (node-key prev) final-path) prev))
+                                       (loop until (queue-empty-p pending)
+                                             do (queue-push (queue-pop pending) optional-ends))))
+                                 else
+                                 do (cond
+                                      ((< tentative-g (day16-node-g-score next))
+                                       (setf (gethash next-key path) current)
+                                       (setf (day16-node-g-score next) tentative-g)
+                                       (setf (day16-node-f-score next)
+                                             (+ tentative-g (heuristic next end)))
+                                       (queue-push next optional-ends))
+                                      ((= tentative-g (day16-node-g-score next))
+                                       (queue-push current pending)))))
+                          (return final-path))))))))
+
 
 (defun d16p1 ()
   (nth-value 0 (day16-solve)))
@@ -147,15 +210,13 @@
 ;; 114476
 
 (defun d16p2 (&optional print-route-p)
-  ;; TODO: Solve the path, exhaust the queue, only test if score would be cheaper or equal to the
-  ;;       path cost, and don't test nodes already in the queue.
   (loop with tiles = (make-hash-table :test 'equal)
-        and path = (nth-value 1 (day16-solve))
-        for node in path
-        for tile = (cons (day16-node-x node) (day16-node-y node))
+        and path = (day16-solve T)
+        for (facing x y) in (hash-table-keys path)
+        for tile = (cons x y)
         for found-p = (gethash tile tiles)
         unless found-p do (setf (gethash tile tiles) T)
-        unless found-p count node
+        unless found-p count x
         into sum
         finally (return (if print-route-p
                             (let ((map (nth-value 4 (day16-data))))
@@ -168,3 +229,5 @@
                                                    (T #\.))))
                                 (format T "~%")))
                             sum))))
+
+;; 506
