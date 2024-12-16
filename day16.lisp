@@ -39,7 +39,7 @@
             finally (queue-push row map))
       (incf height))))
 
-(defun day16-solve (&optional (order '(:left :right :next))) ;; A proper use of A* finally!
+(defun day16-solve () ;; A proper use of A* finally!
   (multiple-value-bind (start-x start-y end-x end-y map) (day16-data)
     (let ((nodes (make-hash-table :test 'equal))
           (path (make-hash-table :test 'equalp))
@@ -91,7 +91,7 @@
                                        (:south :west)
                                        (:north :east))
                                      x y)))
-                   (loop for opt in order
+                   (loop for opt in '(:left :right :next)
                          unless (and (eql opt :next) (aref map next-y next-x))
                          collect (ecase opt
                                    (:left left)
@@ -147,17 +147,15 @@
 ;; 114476
 
 (defun d16p2 (&optional print-route-p)
+  ;; TODO: Solve the path, exhaust the queue, only test if score would be cheaper or equal to the
+  ;;       path cost, and don't test nodes already in the queue.
   (loop with tiles = (make-hash-table :test 'equal)
-        ;; FIXME: Seems the order doesn't matter for getting other paths. Dangit.
-        for order in '((:left :right :next) (:left :next :right)
-                       (:right :left :next) (:right :next :left)
-                       (:next :left :right) (:next :right :left))
-        for path = (nth-value 1 (day16-solve order))
-        sum (loop for node in path
-                  for tile = (cons (day16-node-x node) (day16-node-y node))
-                  for found-p = (gethash tile tiles)
-                  unless found-p do (setf (gethash tile tiles) T)
-                  unless found-p count node)
+        and path = (nth-value 1 (day16-solve))
+        for node in path
+        for tile = (cons (day16-node-x node) (day16-node-y node))
+        for found-p = (gethash tile tiles)
+        unless found-p do (setf (gethash tile tiles) T)
+        unless found-p count node
         into sum
         finally (return (if print-route-p
                             (let ((map (nth-value 4 (day16-data))))
