@@ -14,6 +14,7 @@
 
 (defstruct (heap (:constructor make-heap (predicate &key (capacity #x100)
                                                          (key #'identity)
+                                                         (test #'eql)
                                                          (element-type T)
                                                          (initial-element NIL))))
   (array (make-array capacity :element-type element-type :initial-element initial-element)
@@ -21,6 +22,7 @@
   (capacity #x100 :type (unsigned-byte 32))
   (size 0 :type (unsigned-byte 32))
   (key #'identity :type function)
+  (test #'eql :type function)
   (predicate NIL :type function)
   (element-type T :type (and (not null) (or symbol list)))
   (initial-element NIL :type T))
@@ -56,6 +58,23 @@
 
 (defmethod heap-peek ((heap heap))
   (when (< 0 (heap-size heap)) (aref (heap-array heap) 0)))
+
+(defmethod heap-update ((heap heap) value)
+  (let* ((array (heap-array heap))
+         (key-f (heap-key heap))
+         (predicate-f (heap-predicate heap))
+         (index (dotimes (i (heap-size heap) -1)
+                  (when (funcall (heap-test heap) value (aref array i))
+                    (return i)))))
+    (when (<= 0 index)
+      (setf (aref array index) value)
+      (loop while (and (< 0 index)
+                       (funcall predicate-f
+                                (funcall key-f (aref array index))
+                                (funcall key-f (aref array (heap-parent index)))))
+            do (heap-swap array index (heap-parent index))
+            do (setf index (heap-parent index))
+            finally (return T)))))
 
 (defmethod heap-heapify ((heap heap) index)
   (let ((left (heap-left index))
