@@ -70,9 +70,10 @@
   (declare (optimize (speed 3)))
   (let ((lengths (day19-matches towel patterns)))
     (declare (type list lengths))
-    (or (find (length towel) lengths :test #'(lambda (a b)
-                                               (declare (type (unsigned-byte 32) a b))
-                                               (= a b)))
+    (or (find (length towel) lengths
+              :test #'(lambda (a b)
+                        (declare (type (unsigned-byte 32) a b))
+                        (= a b)))
         (loop for length in lengths
               when (day19-possible-p (subseq towel length) patterns)
               do (return T)))))
@@ -85,18 +86,21 @@
 
 ;; 220
 
-(defun day19-count (towel patterns)
-  ;; FIXME: This won't work. Even going through the first one with the tree pattern takes forever.
+(defun day19-count (towel patterns &optional (solved (make-hash-table :test 'equal)))
+  ;; TODO: Could do without the cache by solving it backwards.
   (declare (type list towel))
   (declare (optimize (speed 3)))
-  (loop for length of-type (unsigned-byte 32) in (day19-matches towel patterns)
-        sum (if (/= length (length towel))
-                (day19-count (subseq towel length) patterns)
-                1)
-        into total of-type (unsigned-byte 32)
-        finally (return total)))
+  (or (gethash towel solved)
+      (loop for length of-type (unsigned-byte 32) in (day19-matches towel patterns)
+            sum (if (/= length (length towel))
+                    (day19-count (subseq towel length) patterns solved)
+                    1)
+            into total of-type (unsigned-byte 62)
+            finally (return (prog1 total (setf (gethash towel solved) total))))))
 
 (defun d19p2 ()
   (multiple-value-bind (patterns towels) (day19-data)
     (loop for towel across towels
           sum (day19-count towel patterns))))
+
+;; 565600047715343
