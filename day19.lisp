@@ -57,15 +57,11 @@
 (defun day19-matches (towel patterns)
   (declare (type day19-pattern patterns))
   (declare (optimize (speed 3)))
-  (loop for current on towel
-        for color = (or (car current) 0)
-        for next-color = (or (second current) 0)
-        for pattern of-type (or null day19-pattern) = (aref patterns color) then next-pattern
+  (loop for color in towel
+        for pattern of-type (or null day19-pattern) = (aref patterns color) then (aref pattern color)
         while pattern
-        for next-pattern = (aref pattern next-color)
-        counting color into i
-        when (aref pattern 0) collect i into lengths
-        while next-pattern
+        counting color into index
+        when (aref pattern 0) collect index into lengths
         finally (return lengths)))
 
 (defun day19-possible-p (towel patterns)
